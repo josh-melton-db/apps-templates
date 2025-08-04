@@ -1,0 +1,64 @@
+# Databricks App Configuration
+# Using native Databricks Apps features instead of containerization
+
+# Define app resources - these will be accessible via valueFrom in env vars
+resources:
+  - name: sql_warehouse
+    description: "SQL warehouse for running queries"
+    
+  - name: default_job
+    description: "Default job ID for demonstrations"
+    
+  - name: azure_logs_workspace_id
+    description: "Azure Log Analytics workspace ID"
+    
+  - name: azure_logs_shared_key
+    description: "Azure Log Analytics shared key"
+    
+  - name: model_serving_endpoint
+    description: "Model serving endpoint name"
+
+# Environment variables
+env:
+  # Static configuration values
+  - name: LOG_LEVEL
+    value: "INFO"
+    
+  # Resource references using valueFrom (secure secret management)
+  - name: SQL_WAREHOUSE_ID
+    valueFrom: sql_warehouse
+    
+  - name: DEFAULT_JOB_ID
+    valueFrom: default_job
+    
+  - name: AZURE_LOG_ANALYTICS_WORKSPACE_ID
+    valueFrom: azure_logs_workspace_id
+    
+  - name: AZURE_LOG_ANALYTICS_SHARED_KEY
+    valueFrom: azure_logs_shared_key
+    
+  - name: MODEL_SERVING_ENDPOINT
+    valueFrom: model_serving_endpoint
+
+# Note: The following are automatically provided by Databricks Apps:
+# - DATABRICKS_HOST: Workspace URL
+# - DATABRICKS_CLIENT_ID: Service principal client ID  
+# - DATABRICKS_CLIENT_SECRET: Service principal secret
+# - DATABRICKS_APP_PORT: Port to bind to
+# - DATABRICKS_APP_NAME: App name
+# - DATABRICKS_WORKSPACE_ID: Workspace ID
+# 
+# IMPORTANT: For user authorization to work in deployed environment:
+# 1. Enable "User authorization" in the Databricks UI when configuring this app
+# 2. Add required scopes (e.g., "sql", "files.files", "dashboards.genie") in the UI
+# 3. Users must grant consent when first accessing the app
+# 4. The x-forwarded-access-token header will be automatically provided to the app
+# 
+# With user authorization enabled, the following header is provided:
+# - x-forwarded-access-token: User's access token (in HTTP headers)
+# 
+# Common scopes needed for this app:
+# - sql: For SQL warehouse queries
+# - files.files: For file operations
+# - iam.access-control:read: For user identity (automatically included)
+# - iam.current-user:read: For user identity (automatically included)

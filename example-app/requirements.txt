@@ -1,0 +1,25 @@
+dash==3.2.0
+databricks-sdk==0.61.0
+
+# Dash UI components
+dash-bootstrap-components==2.0.2
+
+# Data manipulation for Dash tables
+pandas==2.1.4
+
+# Azure logging
+azure-core==1.29.5
+azure-identity==1.15.0
+
+# Input validation 
+pydantic==2.5.2
+
+# Additional utilities
+python-dotenv==1.0.0
+pyyaml==6.0.1
+
+# Note: requests, urllib3, and certifi are typically included with Python
+# but we pin them for consistency
+requests==2.31.0
+urllib3==2.1.0
+certifi==2023.11.17
