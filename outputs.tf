@@ -25,6 +25,22 @@ output "databricks_workspace_resource_id" {
   value       = azurerm_databricks_workspace.this.id
 }
 
+# Second Databricks Workspace Outputs
+output "databricks_workspace_2_url" {
+  description = "URL of the second Databricks workspace"
+  value       = "https://${azurerm_databricks_workspace.workspace_2.workspace_url}/"
+}
+
+output "databricks_workspace_2_id" {
+  description = "The second Databricks workspace ID"
+  value       = azurerm_databricks_workspace.workspace_2.workspace_id
+}
+
+output "databricks_workspace_2_resource_id" {
+  description = "The Azure resource ID of the second Databricks workspace"
+  value       = azurerm_databricks_workspace.workspace_2.id
+}
+
 # Log Analytics Workspace Outputs
 output "log_analytics_workspace_id" {
   description = "The Log Analytics workspace ID"
@@ -72,6 +88,22 @@ output "public_subnet_id" {
 output "private_subnet_id" {
   description = "Private subnet ID"
   value       = azurerm_subnet.private.id
+}
+
+# Second Workspace Network Outputs
+output "virtual_network_2_id" {
+  description = "Second workspace virtual network ID"
+  value       = azurerm_virtual_network.workspace_2.id
+}
+
+output "public_subnet_2_id" {
+  description = "Second workspace public subnet ID"
+  value       = azurerm_subnet.public_2.id
+}
+
+output "private_subnet_2_id" {
+  description = "Second workspace private subnet ID"
+  value       = azurerm_subnet.private_2.id
 }
 
 # Network Policy Outputs
@@ -133,4 +165,46 @@ output "databricks_app_url" {
   description = "URL of the deployed Databricks App"
   value       = databricks_app.example_app.url
 }
+
+# Delta Share Outputs
+output "delta_share_name" {
+  description = "Name of the Delta Share"
+  value       = databricks_share.delta_share.name
+}
+
+output "delta_share_id" {
+  description = "ID of the Delta Share"
+  value       = databricks_share.delta_share.id
+}
+
+# Delta Sharing Recipient Outputs
+output "delta_recipient_name" {
+  description = "Name of the Delta Sharing recipient"
+  value       = databricks_recipient.delta_recipient.name
+}
+
+output "delta_recipient_id" {
+  description = "ID of the Delta Sharing recipient"
+  value       = databricks_recipient.delta_recipient.id
+}
+
+output "delta_recipient_activation_url" {
+  description = "Activation URL for the Delta Sharing recipient"
+  value       = databricks_recipient.delta_recipient.activation_url
+  sensitive   = true
+}
+
+# Share Catalog Outputs
+# Note: Catalog outputs commented out since both workspaces share the same metastore
+# and have direct access to the same data without needing a share catalog
+# 
+# output "share_catalog_name" {
+#   description = "Name of the catalog created from Delta Share"
+#   value       = databricks_catalog.share_catalog.name
+# }
+# 
+# output "share_catalog_id" {
+#   description = "ID of the catalog created from Delta Share"
+#   value       = databricks_catalog.share_catalog.id
+# }
 

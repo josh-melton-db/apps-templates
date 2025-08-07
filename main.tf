@@ -43,6 +43,34 @@ resource "azurerm_databricks_workspace" "this" {
   ]
 }
 
+# Second Databricks Workspace with Unity Catalog enabled
+resource "azurerm_databricks_workspace" "workspace_2" {
+  name                        = var.databricks_workspace_2_name
+  resource_group_name         = azurerm_resource_group.this.name
+  location                    = azurerm_resource_group.this.location
+  sku                         = "premium"
+  managed_resource_group_name = "databricks-rg-${var.databricks_workspace_2_name}"
+
+  # Enable Unity Catalog
+  managed_services_cmk_key_vault_key_id = null
+  
+  custom_parameters {
+    no_public_ip                                         = true
+    public_subnet_name                                   = "public-subnet-2"
+    private_subnet_name                                  = "private-subnet-2"
+    virtual_network_id                                   = azurerm_virtual_network.workspace_2.id
+    public_subnet_network_security_group_association_id = azurerm_subnet_network_security_group_association.public_2.id
+    private_subnet_network_security_group_association_id = azurerm_subnet_network_security_group_association.private_2.id
+  }
+
+  tags = var.tags
+
+  depends_on = [
+    azurerm_subnet_network_security_group_association.public_2,
+    azurerm_subnet_network_security_group_association.private_2,
+  ]
+}
+
 # Virtual Network for Databricks
 resource "azurerm_virtual_network" "this" {
   name                = "vnet-${var.databricks_workspace_name}"
@@ -123,6 +151,86 @@ resource "azurerm_subnet_network_security_group_association" "private" {
   network_security_group_id = azurerm_network_security_group.private.id
 }
 
+# Virtual Network for Second Databricks Workspace
+resource "azurerm_virtual_network" "workspace_2" {
+  name                = "vnet-${var.databricks_workspace_2_name}"
+  address_space       = ["10.1.0.0/16"]
+  location            = azurerm_resource_group.this.location
+  resource_group_name = azurerm_resource_group.this.name
+
+  tags = var.tags
+}
+
+# Public Subnet for Second Workspace
+resource "azurerm_subnet" "public_2" {
+  name                 = "public-subnet-2"
+  resource_group_name  = azurerm_resource_group.this.name
+  virtual_network_name = azurerm_virtual_network.workspace_2.name
+  address_prefixes     = ["10.1.1.0/24"]
+
+  delegation {
+    name = "databricks-delegation-public-2"
+    service_delegation {
+      name = "Microsoft.Databricks/workspaces"
+      actions = [
+        "Microsoft.Network/virtualNetworks/subnets/join/action",
+        "Microsoft.Network/virtualNetworks/subnets/prepareNetworkPolicies/action",
+        "Microsoft.Network/virtualNetworks/subnets/unprepareNetworkPolicies/action",
+      ]
+    }
+  }
+}
+
+# Private Subnet for Second Workspace
+resource "azurerm_subnet" "private_2" {
+  name                 = "private-subnet-2"
+  resource_group_name  = azurerm_resource_group.this.name
+  virtual_network_name = azurerm_virtual_network.workspace_2.name
+  address_prefixes     = ["10.1.2.0/24"]
+
+  delegation {
+    name = "databricks-delegation-private-2"
+    service_delegation {
+      name = "Microsoft.Databricks/workspaces"
+      actions = [
+        "Microsoft.Network/virtualNetworks/subnets/join/action",
+        "Microsoft.Network/virtualNetworks/subnets/prepareNetworkPolicies/action",
+        "Microsoft.Network/virtualNetworks/subnets/unprepareNetworkPolicies/action",
+      ]
+    }
+  }
+}
+
+# Network Security Group for Public Subnet (Second Workspace)
+resource "azurerm_network_security_group" "public_2" {
+  name                = "nsg-public-${var.databricks_workspace_2_name}"
+  location            = azurerm_resource_group.this.location
+  resource_group_name = azurerm_resource_group.this.name
+
+  tags = var.tags
+}
+
+# Network Security Group for Private Subnet (Second Workspace)
+resource "azurerm_network_security_group" "private_2" {
+  name                = "nsg-private-${var.databricks_workspace_2_name}"
+  location            = azurerm_resource_group.this.location
+  resource_group_name = azurerm_resource_group.this.name
+
+  tags = var.tags
+}
+
+# Associate NSG with Public Subnet (Second Workspace)
+resource "azurerm_subnet_network_security_group_association" "public_2" {
+  subnet_id                 = azurerm_subnet.public_2.id
+  network_security_group_id = azurerm_network_security_group.public_2.id
+}
+
+# Associate NSG with Private Subnet (Second Workspace)
+resource "azurerm_subnet_network_security_group_association" "private_2" {
+  subnet_id                 = azurerm_subnet.private_2.id
+  network_security_group_id = azurerm_network_security_group.private_2.id
+}
+
 # Random suffix for storage account name
 resource "random_string" "storage_suffix" {
   length  = 8
@@ -201,6 +309,14 @@ resource "databricks_metastore" "this" {
 # Assign Databricks workspace to metastore
 resource "databricks_metastore_assignment" "this" {
   workspace_id = azurerm_databricks_workspace.this.workspace_id
+  metastore_id = databricks_metastore.this.id
+
+  depends_on = [databricks_metastore.this]
+}
+
+# Assign second Databricks workspace to metastore
+resource "databricks_metastore_assignment" "workspace_2" {
+  workspace_id = azurerm_databricks_workspace.workspace_2.workspace_id
   metastore_id = databricks_metastore.this.id
 
   depends_on = [databricks_metastore.this]
@@ -327,6 +443,68 @@ resource "databricks_secret" "azure_logs_shared_key" {
 
   depends_on = [databricks_secret_scope.app_scope]
 }
+
+# Delta Share for sharing tables
+resource "databricks_share" "delta_share" {
+  name = var.delta_share_name != null ? var.delta_share_name : "delta-share-${var.databricks_workspace_name}"
+  comment = "Delta Share for sharing tables with external recipients"
+  
+  # Add the route optimization table to the share
+  object {
+    name             = "main.default.03_route_optimization"
+    data_object_type = "TABLE"
+    comment          = "Route optimization table shared via Delta Sharing"
+    history_data_sharing_status = "ENABLED"
+  }
+  
+  depends_on = [
+    databricks_metastore_assignment.this
+  ]
+}
+
+# Delta Sharing recipient
+resource "databricks_recipient" "delta_recipient" {
+  name                               = var.delta_recipient_name != null ? var.delta_recipient_name : "recipient-${var.databricks_workspace_name}"
+  comment                           = "Delta Sharing recipient for ${var.databricks_workspace_name}"
+  authentication_type               = "DATABRICKS"
+  data_recipient_global_metastore_id = var.recipient_metastore_id
+  
+  depends_on = [
+    databricks_metastore_assignment.this
+  ]
+}
+
+# Grant access to the share for the recipient
+resource "databricks_grants" "share_to_recipient" {
+  share = databricks_share.delta_share.name
+  
+  grant {
+    principal  = databricks_recipient.delta_recipient.name
+    privileges = ["SELECT"]
+  }
+  
+  depends_on = [
+    databricks_share.delta_share,
+    databricks_recipient.delta_recipient
+  ]
+}
+
+# Note: Since both workspaces share the same Unity Catalog metastore,
+# they both have direct access to the same tables (main.default.03_route_optimization)
+# The Delta Share is primarily for external sharing to other metastores/organizations
+# 
+# If you need a catalog from external Delta Share, uncomment and configure below:
+# resource "databricks_catalog" "share_catalog" {
+#   provider      = databricks.workspace_2
+#   name          = var.share_catalog_name
+#   comment       = "Catalog created from external Delta Share"
+#   provider_name = "external_provider_name"  # Replace with actual external provider
+#   share_name    = "external_share_name"     # Replace with actual external share
+#   
+#   depends_on = [
+#     databricks_metastore_assignment.workspace_2
+#   ]
+# }
 
 # Databricks App deployment for the example-app
 resource "databricks_app" "example_app" {

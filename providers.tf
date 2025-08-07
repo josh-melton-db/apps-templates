@@ -27,3 +27,10 @@ provider "databricks" {
   # Uses Databricks CLI authentication with specific profile
   profile = "ACCOUNT-ccb842e7-2376-4152-b0b0-29fa952379b8"
 }
+
+# Databricks provider for second workspace
+provider "databricks" {
+  alias                       = "workspace_2"
+  azure_workspace_resource_id = azurerm_databricks_workspace.workspace_2.id
+  auth_type                   = "azure-cli"
+}
