@@ -6,7 +6,7 @@ from databricks.sdk import WorkspaceClient
 
 # Initialize Databricks client with OAuth M2M authentication
 # This is the correct authentication method for Databricks Apps
-w = WorkspaceClient(profile='azure')
+w = WorkspaceClient()
 
 # Get job ID from environment variable (configured in app.yaml)
 JOB_ID = os.getenv('DATABRICKS_JOB_ID', '274539569654387')
