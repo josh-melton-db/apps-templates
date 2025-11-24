@@ -1,8 +1,5 @@
 command: ['python', 'app.py']
 env:
-  - name: 'DATABRICKS_CONFIG_PROFILE'
-    value: 'azure'
-
   # Job ID - Change this to your Databricks job ID
   - name: 'DATABRICKS_JOB_ID'
     value: '274539569654387'
