@@ -4,11 +4,12 @@ from dash import Dash, html, dcc, Input, Output, State, callback
 import dash_bootstrap_components as dbc
 from databricks.sdk import WorkspaceClient
 
-# Initialize Databricks client
-w = WorkspaceClient()
+# Initialize Databricks client with OAuth M2M authentication
+# This is the correct authentication method for Databricks Apps
+w = WorkspaceClient(profile='azure')
 
 # Get job ID from environment variable (configured in app.yaml)
-JOB_ID = os.getenv('DATABRICKS_JOB_ID', '921773893211960')
+JOB_ID = os.getenv('DATABRICKS_JOB_ID', '274539569654387')
 
 # Initialize Dash app with Bootstrap theme
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -33,7 +34,7 @@ app.layout = dbc.Container([
                     html.Label("Job Parameters (JSON format):", className="fw-bold"),
                     dcc.Textarea(
                         id='job-params-input',
-                        value='{\n  "param1": "value1",\n  "param2": "value2"\n}',
+                        value='{\n  "example_param": "value1",\n  "param2": "value2"\n}',
                         style={'width': '100%', 'height': 150, 'fontFamily': 'monospace'},
                         className="mb-3"
                     ),
@@ -121,11 +122,19 @@ def get_results(n_clicks, run_id):
         return "❌ No run ID available. Please submit a job first."
     
     try:
-        # Get run output
-        results = w.jobs.get_run_output(run_id)
+        # First get the run to access task information
+        run = w.jobs.get_run(run_id)
+        
+        # Get output from the first task's run_id (not the parent run_id)
+        if run.tasks and len(run.tasks) > 0:
+            task_run_id = run.tasks[0].run_id
+            results = w.jobs.get_run_output(run_id=task_run_id)
+        else:
+            return "❌ No tasks found in this job run."
         
         output = f"📊 Job Results\n\n"
         output += f"Run ID: {run_id}\n"
+        output += f"Task Run ID: {task_run_id}\n"
         output += f"Status: {results.metadata.state.life_cycle_state if results.metadata else 'Unknown'}\n\n"
         
         if results.notebook_output:
